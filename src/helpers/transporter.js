@@ -2,7 +2,7 @@ import nodemailer from "nodemailer";
 import * as config from "../config/index.js";
 
 //@Create transporter using gmail
-const transporter = nodemailer.createTransport({
+export const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: config.GMAIL,
@@ -12,5 +12,3 @@ const transporter = nodemailer.createTransport({
     rejectUnauthorized: false,
   },
 });
-
-export default transporter;
