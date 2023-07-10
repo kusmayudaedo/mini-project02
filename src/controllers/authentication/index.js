@@ -387,7 +387,7 @@ export const forgetPassword = async (req, res, next) => {
       userId: userId,
       role: role,
     });
-    console.log(accessToken);
+
     //@Send verification link to new email
     const mailOptions = {
       from: config.GMAIL,

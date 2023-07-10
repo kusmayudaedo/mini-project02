@@ -21,9 +21,23 @@ export const getBlogByCategory = async (req, res, next) => {
     //@get query parameters
     const { id_cat, sort, page } = req.query;
 
-    if (id_cat || sort || page) {
-      //@query based on parameters
-      const posts = await Post.findAll({
+    //@Pagination
+    //@maximum post per page
+    const pageSize = 10;
+    let offset = 0;
+    let limit = pageSize;
+    let currentPage = 1;
+
+    if (page && !isNaN(page)) {
+      currentPage = page;
+      offset = (currentPage - 1) * pageSize;
+    }
+
+    let queryOptions = {};
+
+    //@query based on parameters
+    if (id_cat) {
+      queryOptions = {
         include: [
           {
             model: User,
@@ -36,11 +50,11 @@ export const getBlogByCategory = async (req, res, next) => {
         ],
         where: { categoryId: id_cat },
         order: [["createdAt", sort]],
-      });
-      //@send response
-      res.status(200).json({ result: posts });
+        offset,
+        limit,
+      };
     } else {
-      const posts = await Post.findAll({
+      queryOptions = {
         include: [
           {
             model: User,
@@ -51,9 +65,24 @@ export const getBlogByCategory = async (req, res, next) => {
             attributes: ["categoryId", "categoryName"],
           },
         ],
-      });
-      res.status(200).json({ result: posts });
+        order: [["createdAt", "DESC"]],
+        offset,
+        limit,
+      };
     }
+
+    const { count, rows: posts } = await Post.findAndCountAll(queryOptions);
+
+    const totalPages = Math.ceil(count / pageSize);
+
+    //@send response
+    res.status(200).json({
+      totalPosts: count,
+      postsLimit: limit,
+      totalPages: totalPages,
+      currentPage: parseInt(currentPage),
+      result: posts,
+    });
   } catch (error) {
     next(error);
   }
