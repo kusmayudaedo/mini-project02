@@ -3,6 +3,8 @@ import { Post, Category, LikePost } from "../../models/post.js";
 import User from "../../models/user.js";
 import * as error from "../../midlewares/error.handler.js";
 import db from "../../models/index.js";
+import fs from "fs";
+import path from "path";
 
 //@get all Categories controller
 export const getCategory = async (req, res, next) => {
@@ -120,13 +122,27 @@ export const getMostFavoritePosts = async (req, res, next) => {
 //@get Liked posts with token
 export const getLikeBlogByToken = async (req, res, next) => {
   try {
+    //@get query parameters
+    const { page } = req.query;
+
     //@get user information by token
     const { username } = await User?.findOne({
       where: { userId: req.user.userId },
     });
 
+    //@Pagination
+    const pageSize = 10;
+    let offset = 0;
+    let limit = pageSize;
+    let currentPage = 1;
+
+    if (page && !isNaN(page)) {
+      currentPage = page;
+      offset = (currentPage - 1) * pageSize;
+    }
+
     //@get the post liked by user
-    const likePost = await LikePost.findAll({
+    const { count, rows: likePost } = await LikePost.findAndCountAll({
       where: { username: username },
       include: [
         {
@@ -144,9 +160,20 @@ export const getLikeBlogByToken = async (req, res, next) => {
           ],
         },
       ],
+      offset,
+      limit,
     });
+
+    const totalPages = Math.ceil(count / pageSize);
+
     //@send response
-    res.status(200).json({ result: likePost });
+    res.status(200).json({
+      totalPosts: count,
+      postsLimit: limit,
+      totalPages: totalPages,
+      currentPage: parseInt(currentPage),
+      result: likePost,
+    });
   } catch (error) {
     next(error);
   }
@@ -194,6 +221,47 @@ export const likeBlog = async (req, res, next) => {
     await transaction.commit();
   } catch (error) {
     await transaction.rollback();
+    next(error);
+  }
+};
+
+//@Create Blog
+export const createBlog = async (req, res, next) => {
+  const transaction = await db.sequelize.transaction();
+  const thumbnail = req?.files?.["file"][0].filename;
+  try {
+    //@read blogs data from form data
+    const { data } = req.body;
+    const body = JSON.parse(data);
+
+    //@update data to database
+    const posts = await Post?.create({
+      title: body?.title,
+      content: body?.content,
+      userId: req?.user?.userId,
+      categoryId: parseInt(body?.categoryId),
+      thumbnail: "public/images/thumbnails/" + thumbnail,
+      country: body?.country,
+      keywords: body?.keywords,
+    });
+
+    //@send response
+    res.status(200).json({ message: "Success Added", data: posts });
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+
+    //@delete image from storage
+    fs.unlink(
+      path.join(process.cwd(), "public", "images", "thumbnails", thumbnail),
+      (error) => {
+        if (error) {
+          console.error("Error deleting file:", error);
+          return;
+        }
+        console.log("File deleted successfully");
+      }
+    );
     next(error);
   }
 };

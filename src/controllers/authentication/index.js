@@ -12,6 +12,7 @@ export const register = async (req, res, next) => {
   const transaction = await db.sequelize.transaction();
   try {
     const { username, email, phone, password } = req.body;
+    console.log(username, email, phone, password);
     await Validation.RegisterValidationSchema.validate(req.body);
 
     //@check if user is already registered
