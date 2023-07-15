@@ -144,11 +144,12 @@ export const getLikeBlogByToken = async (req, res, next) => {
 
     //@get the post liked by user
     const { count, rows: likePost } = await LikePost.findAndCountAll({
-      where: { username: username, isDeleted: 0 },
+      where: { username: username },
       include: [
         {
           model: Post,
           attributes: ["postId", "title", "content", "thumbnail", "categoryId"],
+          where: { isDeleted: 0 },
           include: [
             {
               model: Category,

@@ -5,6 +5,7 @@ import * as config from "../../config/index.js";
 import { ValidationError } from "yup";
 import * as error from "../../midlewares/error.handler.js";
 import db from "../../models/index.js";
+import * as encryption from "../../helpers/encryption.js";
 
 //@register constroller
 export const register = async (req, res, next) => {
@@ -327,6 +328,15 @@ export const changePassword = async (req, res, next) => {
     const { currentPassword, password, confirmPassword } = req.body;
     await Validation.changePasswordSchema.validate(req.body);
 
+    const user = await User?.findOne({ where: { userId: req?.user.userId } });
+
+    const isPasswordCorrect = encryption.comparePassword(
+      currentPassword,
+      user?.dataValues?.password
+    );
+    if (!isPasswordCorrect)
+      throw { status: 400, message: error.INVALID_CREDENTIALS };
+
     //@has new password
     const encryptedPassword = helpers.hashPassword(password);
 
@@ -380,13 +390,13 @@ export const forgetPassword = async (req, res, next) => {
     const { email } = req.body;
 
     //@asume that email is uniqe
-    const { userId, role } = await User?.findOne({ where: { email: email } });
-    console.log(userId, role);
+    const user = await User?.findOne({ where: { email: email } });
+    if (!user) throw { status: 400, message: error.EMAIL_DOES_NOT_EXIS };
 
     //@generate access token
     const accessToken = helpers.createToken({
-      userId: userId,
-      role: role,
+      userId: user.userId,
+      role: user.role,
     });
 
     //@Send verification link to new email
