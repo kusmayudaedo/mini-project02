@@ -5,7 +5,6 @@ import * as config from "../../config/index.js";
 import { ValidationError } from "yup";
 import * as error from "../../midlewares/error.handler.js";
 import db from "../../models/index.js";
-import * as encryption from "../../helpers/encryption.js";
 
 //@register constroller
 export const register = async (req, res, next) => {
@@ -240,6 +239,13 @@ export const changePhone = async (req, res, next) => {
     const { currentPhone, newPhone } = req.body;
     await Validation.changePhoneSchema.validate(req.body);
 
+    //@validate current phone
+    const user = await User?.findOne({
+      where: { userId: req?.user.userId },
+    });
+    if (!(currentPhone === user.phone))
+      throw { status: 300, message: error.BAD_REQUEST };
+
     //@udpate phone in database
     await User?.update(
       { phone: newPhone },
@@ -330,7 +336,7 @@ export const changePassword = async (req, res, next) => {
 
     const user = await User?.findOne({ where: { userId: req?.user.userId } });
 
-    const isPasswordCorrect = encryption.comparePassword(
+    const isPasswordCorrect = helpers.comparePassword(
       currentPassword,
       user?.dataValues?.password
     );
