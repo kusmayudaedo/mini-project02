@@ -52,3 +52,15 @@ export const uploadImage = async (req, res, next) => {
     next(error);
   }
 };
+
+export const viewImage = async (req, res, next) => {
+  try {
+    //@get post id from body
+    const { folder, file } = req.params;
+    const image = path.join(process.cwd(), "public", "images", folder, file);
+    //@send response
+    res.status(200).sendFile(image);
+  } catch (error) {
+    next(error);
+  }
+};

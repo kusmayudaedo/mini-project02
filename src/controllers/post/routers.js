@@ -23,5 +23,7 @@ router.get("/allCategory", BlogController.getCategory);
 router.get("/pagFav", BlogController.getMostFavoritePosts);
 router.get("/pagLike", verifyUser, BlogController.getLikeBlogByToken);
 router.post("/like", verifyUser, BlogController.likeBlog);
+router.patch("/removePost", verifyUser, BlogController.deleteBlog);
+router.get("/public/images/:folder/:file", BlogController.viewImage);
 
 export default router;

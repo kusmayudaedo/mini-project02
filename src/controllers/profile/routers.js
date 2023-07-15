@@ -19,5 +19,6 @@ router.post(
   uploader.single("file"),
   ProfileController.uploadImage
 );
+router.get("/public/images/:folder/:file", ProfileController.viewImage);
 
 export default router;

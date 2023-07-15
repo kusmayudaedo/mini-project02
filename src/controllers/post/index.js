@@ -1,4 +1,3 @@
-import { USER_DOES_NOT_EXISTS } from "../../midlewares/error.handler.js";
 import { Post, Category, LikePost } from "../../models/post.js";
 import User from "../../models/user.js";
 import * as error from "../../midlewares/error.handler.js";
@@ -50,7 +49,7 @@ export const getBlogByCategory = async (req, res, next) => {
             attributes: ["categoryId", "categoryName"],
           },
         ],
-        where: { categoryId: id_cat },
+        where: { categoryId: id_cat, isDeleted: 0 },
         order: [["createdAt", sort]],
         offset,
         limit,
@@ -67,6 +66,7 @@ export const getBlogByCategory = async (req, res, next) => {
             attributes: ["categoryId", "categoryName"],
           },
         ],
+        where: { isDeleted: 0 },
         order: [["createdAt", "DESC"]],
         offset,
         limit,
@@ -108,6 +108,7 @@ export const getMostFavoritePosts = async (req, res, next) => {
           attributes: ["username", "postId"],
         },
       ],
+      where: { isDeleted: 0 },
       order: [["totalLike", "DESC"]],
       limit: 10,
     });
@@ -143,7 +144,7 @@ export const getLikeBlogByToken = async (req, res, next) => {
 
     //@get the post liked by user
     const { count, rows: likePost } = await LikePost.findAndCountAll({
-      where: { username: username },
+      where: { username: username, isDeleted: 0 },
       include: [
         {
           model: Post,
@@ -262,6 +263,52 @@ export const createBlog = async (req, res, next) => {
         console.log("File deleted successfully");
       }
     );
+    next(error);
+  }
+};
+
+//@Like Blog
+export const deleteBlog = async (req, res, next) => {
+  const transaction = await db.sequelize.transaction();
+  try {
+    //@get post id from body
+    const { postId } = req.body;
+
+    //@check if the postId exist
+    const isPostIdExist = await Post?.findOne({ where: { postId: postId } });
+    if (!isPostIdExist || isPostIdExist?.dataValues?.isDeleted === 1)
+      throw { status: 400, message: error.NOT_FOUND };
+
+    //@check for userId
+    if (!(req.user?.userId === isPostIdExist.userId))
+      throw { status: 401, message: error.RESTRICTED };
+
+    //@update isDeleted status
+    await Post?.update(
+      {
+        isDeleted: 1,
+      },
+      { where: { postId: postId } }
+    );
+
+    //@send Response
+    res.status(200).json({ message: "Post deleted successfully" });
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    next(error);
+  }
+};
+
+//@viem user profile image
+export const viewImage = async (req, res, next) => {
+  try {
+    //@get post id from body
+    const { folder, file } = req.params;
+    const image = path.join(process.cwd(), "public", "images", folder, file);
+    //@send response
+    res.status(200).sendFile(image);
+  } catch (error) {
     next(error);
   }
 };
